@@ -1,0 +1,547 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>Adit Pay Volume Dashboard</title>
+<link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700;800&display=swap" rel="stylesheet"/>
+<script src="https://cdn.plot.ly/plotly-2.35.2.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+:root{
+  --bg:#f0f4f8;--white:#fff;--border:#e2e8f0;--radius:16px;
+  --blue:#2563eb;--teal:#0891b2;--green:#059669;--amber:#d97706;--violet:#7c3aed;--rose:#e11d48;
+  --text:#1e293b;--muted:#64748b;
+  --shadow:0 2px 14px rgba(0,0,0,.07);--shadow-h:0 8px 30px rgba(0,0,0,.13);
+}
+body{font-family:'Poppins',sans-serif;background:var(--bg);color:var(--text);min-height:100vh}
+/* ── HEADER */
+.hdr{background:var(--white);border-bottom:1px solid var(--border);padding:36px 24px 0;text-align:center}
+.eyebrow{display:inline-block;background:#eff6ff;color:var(--blue);font-size:10px;font-weight:700;letter-spacing:1.8px;text-transform:uppercase;padding:4px 14px;border-radius:99px;margin-bottom:14px}
+.hdr h1{font-size:clamp(22px,4vw,36px);font-weight:800;color:var(--text);line-height:1.2;margin-bottom:10px}
+.hdr h1 .hl{color:var(--blue)}
+.hdr p{font-size:13px;color:var(--muted);max-width:560px;margin:0 auto 28px;line-height:1.7}
+.divider{height:4px;background:linear-gradient(90deg,var(--blue),var(--teal))}
+/* ── UPLOAD */
+#uploadScreen{display:flex;align-items:center;justify-content:center;min-height:65vh;padding:40px 24px}
+.ucard{background:var(--white);border:2.5px dashed var(--border);border-radius:var(--radius);padding:56px 46px;text-align:center;max-width:500px;width:100%;transition:all .25s;cursor:pointer;box-shadow:var(--shadow)}
+.ucard:hover,.ucard.drag{border-color:var(--blue);background:#f0f7ff;transform:translateY(-4px);box-shadow:var(--shadow-h)}
+.uicon{font-size:54px;margin-bottom:16px}
+.ucard h2{font-size:20px;font-weight:700;margin-bottom:8px}
+.ucard p{font-size:13px;color:var(--muted);margin-bottom:24px;line-height:1.6}
+.btn-primary{background:var(--blue);color:#fff;border:none;padding:11px 28px;border-radius:10px;font-family:'Poppins',sans-serif;font-size:13px;font-weight:600;cursor:pointer;transition:background .2s,transform .15s}
+.btn-primary:hover{background:#1d4ed8;transform:scale(1.03)}
+#fi{display:none}
+.note{margin-top:16px;font-size:11px;color:var(--muted)}
+.load-btn{margin-top:12px;background:#f0fdf4;color:var(--green);border:1px solid #bbf7d0;padding:9px 22px;border-radius:10px;font-family:'Poppins',sans-serif;font-size:13px;font-weight:600;cursor:pointer;transition:all .2s;display:block;width:100%}
+.load-btn:hover{background:var(--green);color:#fff}
+/* ── ACTION BAR */
+.abar{background:var(--white);border-bottom:1px solid var(--border);padding:12px 20px;position:sticky;top:0;z-index:100;display:flex;flex-wrap:wrap;gap:10px;align-items:center}
+.pill{display:inline-flex;align-items:center;gap:6px;background:#f8fafc;border:1px solid var(--border);border-radius:99px;padding:5px 13px;font-size:12px;font-weight:600;white-space:nowrap}
+.ldot{width:8px;height:8px;background:#22c55e;border-radius:50%;animation:pulse 1.6s infinite}
+@keyframes pulse{0%,100%{opacity:1}50%{opacity:.35}}
+.pill.red{background:#fff1f2;border-color:#fecdd3;color:var(--rose)}
+.pill.grn{background:#f0fdf4;border-color:#bbf7d0;color:var(--green)}
+.sb{flex:1;min-width:160px;max-width:260px;position:relative}
+.sb input{width:100%;padding:7px 12px 7px 34px;border:1px solid var(--border);border-radius:9px;font-family:'Poppins',sans-serif;font-size:12px;outline:none;transition:border .2s}
+.sb input:focus{border-color:var(--blue)}
+.sb-icon{position:absolute;left:10px;top:50%;transform:translateY(-50%);font-size:13px;color:var(--muted)}
+select{padding:7px 10px;border:1px solid var(--border);border-radius:9px;font-family:'Poppins',sans-serif;font-size:12px;font-weight:500;outline:none;background:var(--white);cursor:pointer;transition:border .2s}
+select:focus{border-color:var(--blue)}
+.btn-sm{padding:7px 14px;border-radius:9px;font-family:'Poppins',sans-serif;font-size:12px;font-weight:600;cursor:pointer;transition:all .2s;border:1px solid transparent;white-space:nowrap}
+.btn-reset{background:#fff1f2;border-color:#fecdd3;color:var(--rose)}
+.btn-reset:hover{background:var(--rose);color:#fff}
+.btn-exp{background:#eff6ff;border-color:#bfdbfe;color:var(--blue)}
+.btn-exp:hover{background:var(--blue);color:#fff}
+.trisk{display:flex;align-items:center;gap:6px;font-size:12px;font-weight:600;cursor:pointer;white-space:nowrap}
+.trisk input{accent-color:var(--rose);width:14px;height:14px}
+/* ── MAIN */
+.main{max-width:1640px;margin:0 auto;padding:22px 20px 52px}
+/* ── KPI */
+.kgrid{display:grid;grid-template-columns:repeat(auto-fit,minmax(190px,1fr));gap:15px;margin-bottom:22px}
+.kcard{background:var(--white);border-radius:var(--radius);padding:18px 20px;box-shadow:var(--shadow);border-left:4px solid transparent;transition:transform .25s,box-shadow .25s;animation:fadeUp .5s both}
+.kcard:hover{transform:translateY(-4px);box-shadow:var(--shadow-h)}
+.kcard.blue{border-color:var(--blue);background:linear-gradient(135deg,#fff 70%,#eff6ff)}
+.kcard.teal{border-color:var(--teal);background:linear-gradient(135deg,#fff 70%,#ecfeff)}
+.kcard.green{border-color:var(--green);background:linear-gradient(135deg,#fff 70%,#f0fdf4)}
+.kcard.amber{border-color:var(--amber);background:linear-gradient(135deg,#fff 70%,#fffbeb)}
+.kcard.rose{border-color:var(--rose);background:linear-gradient(135deg,#fff 70%,#fff1f2)}
+.kh{display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:8px}
+.kico{font-size:22px}
+.ktrend{font-size:10px;font-weight:700;padding:2px 8px;border-radius:99px}
+.ktrend.up{background:#dcfce7;color:var(--green)}
+.ktrend.dn{background:#fee2e2;color:var(--rose)}
+.ktrend.neu{background:#f1f5f9;color:var(--muted)}
+.kval{font-size:26px;font-weight:800;margin-bottom:4px;line-height:1}
+.klbl{font-size:11px;font-weight:500;color:var(--muted)}
+/* ── ROWS */
+.row{display:grid;gap:18px;margin-bottom:18px}
+.r2{grid-template-columns:1fr 1fr}
+.r3{grid-template-columns:1fr 1fr 1fr}
+.r1{grid-template-columns:1fr}
+/* ── CARDS */
+.card{background:var(--white);border-radius:var(--radius);padding:20px;box-shadow:var(--shadow);transition:transform .25s,box-shadow .25s;animation:fadeUp .5s both}
+.card:hover{transform:translateY(-3px);box-shadow:var(--shadow-h)}
+.ctitle{font-size:13px;font-weight:700;color:var(--text);margin-bottom:14px;display:flex;align-items:center;gap:7px}
+.ctitle .dot{width:8px;height:8px;border-radius:50%;flex-shrink:0}
+.cw{width:100%;min-height:270px}
+/* ── TABLES */
+.tw{overflow-x:auto;max-height:370px;overflow-y:auto}
+table{width:100%;border-collapse:collapse;font-size:11.5px}
+th{background:#f8fafc;padding:9px 11px;text-align:left;font-weight:700;font-size:10.5px;text-transform:uppercase;letter-spacing:.5px;color:var(--muted);border-bottom:2px solid var(--border);position:sticky;top:0;z-index:2;cursor:pointer;white-space:nowrap;user-select:none}
+th:hover{background:#f1f5f9;color:var(--text)}
+td{padding:8px 11px;border-bottom:1px solid var(--border);vertical-align:middle;white-space:nowrap}
+tr.sv{background:#fff1f2}
+tr.md{background:#fffbeb}
+tr.gw{background:#f0fdf4}
+tr:hover td{opacity:.9}
+.badge{display:inline-block;padding:2px 8px;border-radius:99px;font-size:10px;font-weight:700}
+.badge.severe{background:#fee2e2;color:var(--rose)}
+.badge.declining{background:#fef3c7;color:#92400e}
+.badge.stable{background:#f1f5f9;color:var(--muted)}
+.badge.growing{background:#dcfce7;color:#166534}
+.rsk{display:inline-flex;align-items:center;gap:4px;font-size:11px;font-weight:700}
+.rsk::before{content:'';width:7px;height:7px;border-radius:50%;display:inline-block}
+.rh::before{background:var(--rose)}
+.rm::before{background:var(--amber)}
+.rl::before{background:var(--green)}
+/* ── SECTION LABEL */
+.slbl{font-size:10.5px;font-weight:700;letter-spacing:1.3px;text-transform:uppercase;color:var(--muted);margin:6px 0 14px;padding-left:2px}
+/* ── ATTENTION */
+.atcard{background:linear-gradient(135deg,#fff 85%,#fff1f2)}
+.achip{font-size:10px;font-weight:600;padding:3px 8px;border-radius:99px;background:#eff6ff;color:var(--blue);white-space:nowrap}
+/* ── ANIM */
+@keyframes fadeUp{from{opacity:0;transform:translateY(18px)}to{opacity:1;transform:translateY(0)}}
+.kcard:nth-child(1){animation-delay:.04s}
+.kcard:nth-child(2){animation-delay:.09s}
+.kcard:nth-child(3){animation-delay:.14s}
+.kcard:nth-child(4){animation-delay:.19s}
+.kcard:nth-child(5){animation-delay:.24s}
+/* ── RESPONSIVE */
+@media(max-width:960px){.r2,.r3{grid-template-columns:1fr}}
+@media(max-width:600px){.abar{flex-direction:column;align-items:stretch}.sb{max-width:100%}}
+.nodata{text-align:center;padding:36px;color:var(--muted);font-size:13px}
+/* DASHBOARD hidden by default */
+#dash{display:none}
+</style>
+</head>
+<body>
+
+<!-- HEADER -->
+<div class="hdr">
+  <div class="eyebrow">Customer Success &middot; Revenue Intelligence</div>
+  <h1>Adit Pay <span class="hl">Volume</span> Dashboard</h1>
+  <p>Track month-over-month payment trends, identify declining accounts, and improve Adit Pay adoption.</p>
+</div>
+<div class="divider"></div>
+
+<!-- UPLOAD SCREEN -->
+<div id="uploadScreen">
+  <div class="ucard" id="dz">
+    <div class="uicon">&#128202;</div>
+    <h2>Upload Your Adit Pay Data</h2>
+    <p>Drop an Excel (.xlsx) or JSON file here, or click below to browse.<br/>All data stays in your browser.</p>
+    <button class="btn-primary" onclick="document.getElementById('fi').click()">&#128194; Choose File</button>
+    <input type="file" id="fi" accept=".xlsx,.xls,.json"/>
+    <button class="load-btn" onclick="loadEmbedded()">&#9889; Load Sample Data (1,141 Accounts)</button>
+    <p class="note">Supports .xlsx &middot; .xls &middot; .json &middot; No data leaves your browser</p>
+  </div>
+</div>
+
+<!-- DASHBOARD -->
+<div id="dash">
+  <div class="abar">
+    <span class="pill"><span class="ldot"></span><span id="tc">0 Accounts</span></span>
+    <span class="pill red" id="dp">&#8595; 0 Declining</span>
+    <span class="pill grn" id="gp">&#8593; 0 Growing</span>
+    <div class="sb"><span class="sb-icon">&#128269;</span><input id="si" type="text" placeholder="Search business or deal&hellip;"/></div>
+    <select id="fm"><option value="">All Months</option></select>
+    <select id="fst"><option value="">All Stages</option></select>
+    <select id="ftr"><option value="">All Trends</option><option value="growing">Growing</option><option value="stable">Stable</option><option value="declining">Declining</option><option value="severe">Severe Drop</option></select>
+    <select id="fty"><option value="combined">Combined</option><option value="offline">Offline</option><option value="online">Online</option></select>
+    <label class="trisk"><input type="checkbox" id="hr"/> &#128308; High-Risk Only</label>
+    <button class="btn-sm btn-exp" onclick="exportCSV()">&#8595; Export CSV</button>
+    <button class="btn-sm btn-reset" onclick="resetUpload()">&#8635; Reset</button>
+  </div>
+
+  <div class="main">
+    <div class="slbl">Key Metrics</div>
+    <div class="kgrid">
+      <div class="kcard blue">
+        <div class="kh"><span class="kico">&#128179;</span><span class="ktrend neu" id="k0t">&mdash;</span></div>
+        <div class="kval" id="k0v">$0</div><div class="klbl">Total Adit Pay Volume (Current Month)</div>
+      </div>
+      <div class="kcard teal">
+        <div class="kh"><span class="kico">&#128421;</span><span class="ktrend neu" id="k1t">&mdash;</span></div>
+        <div class="kval" id="k1v">$0</div><div class="klbl">Total Offline Volume</div>
+      </div>
+      <div class="kcard green">
+        <div class="kh"><span class="kico">&#127760;</span><span class="ktrend neu" id="k2t">&mdash;</span></div>
+        <div class="kval" id="k2v">$0</div><div class="klbl">Total Online Volume</div>
+      </div>
+      <div class="kcard amber">
+        <div class="kh"><span class="kico">&#9888;</span><span class="ktrend dn" id="k3t">&mdash;</span></div>
+        <div class="kval" id="k3v">0</div><div class="klbl">Accounts with Drop &gt; $5K</div>
+      </div>
+      <div class="kcard rose">
+        <div class="kh"><span class="kico">&#128201;</span><span class="ktrend dn" id="k4t">&mdash;</span></div>
+        <div class="kval" id="k4v">0</div><div class="klbl">Consecutive Monthly Decline</div>
+      </div>
+    </div>
+
+    <div class="slbl">Volume Trends &amp; Health</div>
+    <div class="row r2">
+      <div class="card"><div class="ctitle"><span class="dot" style="background:var(--blue)"></span>Month-over-Month Volume Trend</div><div class="cw" id="tc1"></div></div>
+      <div class="card"><div class="ctitle"><span class="dot" style="background:var(--violet)"></span>Volume Health Distribution</div><div class="cw" id="donut1"></div></div>
+    </div>
+
+    <div class="slbl">Account Performance</div>
+    <div class="row r2">
+      <div class="card"><div class="ctitle"><span class="dot" style="background:var(--rose)"></span>Top Declining Accounts</div><div class="tw" id="dTable"></div></div>
+      <div class="card"><div class="ctitle"><span class="dot" style="background:var(--green)"></span>Top 10 Growing Accounts</div><div class="cw" id="gBar"></div></div>
+    </div>
+
+    <div class="slbl">Priority Attention Required</div>
+    <div class="row r1">
+      <div class="card atcard"><div class="ctitle"><span class="dot" style="background:var(--rose)"></span>&#128680; Accounts Requiring Immediate Attention</div><div class="tw" id="aTable"></div></div>
+    </div>
+
+    <div class="slbl">Breakdown &amp; Heatmap</div>
+    <div class="row r3">
+      <div class="card"><div class="ctitle"><span class="dot" style="background:var(--teal)"></span>Offline vs Online Split</div><div class="cw" id="split1"></div></div>
+      <div class="card"><div class="ctitle"><span class="dot" style="background:var(--violet)"></span>Stage-wise Volume</div><div class="cw" id="stage1"></div></div>
+      <div class="card"><div class="ctitle"><span class="dot" style="background:var(--amber)"></span>Month-over-Month Heatmap</div><div class="cw" id="hmap1"></div></div>
+    </div>
+  </div>
+</div>
+
+<script>
+// ── EMBEDDED DATA ─────────────────────────────────────────
+const EMBEDDED_RAW = [{"businessName":"Arcadia Chiropractic","dealName":"Dr. Dan Kirschner Chiropractic - Arcadia","stage":"Onboarding","created":"May 07, 2026","months":{"Jan 2026":{"offlineChange":0.0,"offline":0,"onlineChange":0.0,"online":0},"Feb 2026":{"offlineChange":0.0,"offline":0,"onlineChange":0.0,"online":0},"Mar 2026":{"offlineChange":0.0,"offline":0,"onlineChange":0.0,"online":0},"Apr 2026":{"offlineChange":0.0,"offline":0,"onlineChange":0.0,"online":0},"May 2026":{"offlineChange":42.0,"offline":42.0,"onlineChange":0.0,"online":0}}},{"businessName":"Means and Assoc. Optom","dealName":"Stephen H. Means, O.D. & Associates, PLLC - Huntsville","stage":"CSM","created":"","months":{"Jan 2026":{"offlineChange":0.0,"offline":0,"onlineChange":0.0,"online":0},"Feb 2026":{"offlineChange":0.0,"offline":0,"onlineChange":0.0,"online":0},"Mar 2026":{"offlineChange":0.0,"offline":0,"onlineChange":0.0,"online":0},"Apr 2026":{"offlineChange":0.0,"offline":0,"onlineChange":0.0,"online":0},"May 2026":{"offlineChange":4.0,"offline":0,"onlineChange":4.0,"online":4.0}}},{"businessName":"Tanglewood Vision Cent","dealName":"Tanglewood Vision Center - South Austin","stage":"Onboarding","created":"","months":{"Jan 2026":{"offlineChange":0.0,"offline":0,"onlineChange":0.0,"online":0},"Feb 2026":{"offlineChange":0.0,"offline":0,"onlineChange":0.0,"online":0},"Mar 2026":{"offlineChange":0.0,"offline":0,"onlineChange":0.0,"online":0},"Apr 2026":{"offlineChange":0.0,"offline":0,"onlineChange":0.0,"online":0},"May 2026":{"offlineChange":1.0,"offline":0,"onlineChange":1.0,"online":1.0}}}];
+
+// ── GLOBALS ───────────────────────────────────────────────
+let ALL=[], FILT=[];
+const MONTHS=['Jan 2026','Feb 2026','Mar 2026','Apr 2026','May 2026'];
+const SHORT=['Jan','Feb','Mar','Apr','May'];
+
+// ── UTILS ─────────────────────────────────────────────────
+function pc(v){
+  if(v==null||v==='')return 0;
+  const s=String(v).replace(/[$,\s]/g,'').trim();
+  if(!s||s==='-')return 0;
+  return parseFloat(s)||0;
+}
+function fd(n,c=false){
+  const abs=Math.abs(n);
+  if(c){if(abs>=1e6)return'$'+(n/1e6).toFixed(1)+'M';if(abs>=1e3)return'$'+(n/1e3).toFixed(1)+'K';}
+  return(n<0?'-':'')+'$'+abs.toLocaleString('en-US',{maximumFractionDigits:0});
+}
+function fp(n){return(n>=0?'+':'-')+'$'+Math.abs(n).toLocaleString('en-US',{maximumFractionDigits:0})}
+
+// ── FILE UPLOAD ───────────────────────────────────────────
+document.getElementById('fi').addEventListener('change',e=>{
+  const f=e.target.files[0];if(!f)return;
+  const ext=f.name.split('.').pop().toLowerCase();
+  if(ext==='json'){const r=new FileReader();r.onload=ev=>{try{processRaw(JSON.parse(ev.target.result))}catch(ex){alert('JSON error: '+ex.message)}};r.readAsText(f);}
+  else{const r=new FileReader();r.onload=ev=>{const wb=XLSX.read(ev.target.result,{type:'array'});processXLSX(wb);};r.readAsArrayBuffer(f);}
+});
+const dz=document.getElementById('dz');
+dz.addEventListener('dragover',e=>{e.preventDefault();dz.classList.add('drag')});
+dz.addEventListener('dragleave',()=>dz.classList.remove('drag'));
+dz.addEventListener('drop',e=>{e.preventDefault();dz.classList.remove('drag');const f=e.dataTransfer.files[0];if(!f)return;const inp=document.getElementById('fi');const dt=new DataTransfer();dt.items.add(f);inp.files=dt.files;inp.dispatchEvent(new Event('change'));});
+
+function loadEmbedded(){processRaw(EMBEDDED_RAW);}
+
+// ── PROCESS JSON ──────────────────────────────────────────
+function processRaw(raw){
+  // Check if already pre-processed (has .months property)
+  if(raw[0]&&raw[0].months){finalize(raw);return;}
+  // Original format: first 3 rows are headers, then data
+  const data=[];
+  for(let i=3;i<raw.length;i++){
+    const row=raw[i];
+    const biz=row['__1']||'';const deal=row['__2']||'';const stage=row['__3']||'';const created=row['']||'';
+    if(!String(biz).trim()&&!String(deal).trim())continue;
+    const rec={businessName:String(biz).trim(),dealName:String(deal).trim(),stage:String(stage).trim(),created:String(created).trim(),months:{}};
+    MONTHS.forEach(m=>{rec.months[m]={offlineChange:pc(row[m]),offline:pc(row[m+'__2']),onlineChange:pc(row[m+'__3']),online:pc(row[m+'__4'])};});
+    data.push(rec);
+  }
+  finalize(data);
+}
+
+function processXLSX(wb){
+  // Try each sheet
+  const ws=wb.Sheets[wb.SheetNames[0]];
+  const json=XLSX.utils.sheet_to_json(ws,{header:0,defval:''});
+  // Convert to our format if possible – for now just show alert
+  const data=[];
+  json.forEach((row,i)=>{
+    if(i<1)return;
+    const rec={businessName:String(row['Business Name']||row['__1']||'').trim(),dealName:String(row['Deal Name']||row['__2']||'').trim(),stage:String(row['Stage']||row['__3']||'').trim(),created:'',months:{}};
+    if(!rec.businessName&&!rec.dealName)return;
+    MONTHS.forEach(m=>{rec.months[m]={offlineChange:0,offline:pc(row[m+' Offline']||0),onlineChange:0,online:pc(row[m+' Online']||0)};});
+    data.push(rec);
+  });
+  if(data.length>0)finalize(data);else{alert('Could not parse Excel. Please use the JSON export or try Load Sample Data.');return;}
+}
+
+// ── ENRICH ────────────────────────────────────────────────
+function finalize(data){
+  data.forEach(r=>{
+    r.volumes={};
+    MONTHS.forEach(m=>{r.volumes[m]=(r.months[m].offline||0)+(r.months[m].online||0);});
+    r.consecutiveDecline=calcConsec(r);
+    const lm=MONTHS[4],pm=MONTHS[3];
+    r.currentVol=r.volumes[lm];r.prevVol=r.volumes[pm];r.diff=r.currentVol-r.prevVol;
+    r.diffPct=r.prevVol>0?(r.diff/r.prevVol)*100:0;
+    if(r.diff<=-5000)r.trend='severe';
+    else if(r.diff<0)r.trend='declining';
+    else if(r.diff>0)r.trend='growing';
+    else r.trend='stable';
+    r.riskScore=calcRisk(r);
+  });
+  ALL=data;
+  populateFilters();
+  applyFilters();
+  show();
+}
+function calcConsec(r){
+  let max=0,cur=0;
+  for(let i=1;i<MONTHS.length;i++){
+    if(r.volumes[MONTHS[i]]<r.volumes[MONTHS[i-1]])cur++;else cur=0;
+    if(cur>max)max=cur;
+  }
+  return max;
+}
+function calcRisk(r){
+  let s=0;
+  if(r.diff<=-5000)s+=40;else if(r.diff<0)s+=20;
+  s+=r.consecutiveDecline*15;
+  if(r.currentVol===0&&r.prevVol>0)s+=25;
+  if(r.currentVol<100&&r.prevVol>0)s+=10;
+  return Math.min(s,100);
+}
+function suggestAction(r){
+  if(r.currentVol===0&&r.prevVol>0)return'High churn risk';
+  if(r.consecutiveDecline>=3)return'High churn risk';
+  const lm=MONTHS[4];
+  if(r.months[lm].online===0&&r.months[lm].offline>0)return'Promote online payment usage';
+  if(r.diff<=-5000)return'Reach out for payment adoption';
+  if(r.consecutiveDecline>=2)return'Schedule onboarding follow-up';
+  if(r.months[lm].offline===0&&r.months[lm].online>0)return'Check terminal usage';
+  return'Reach out for payment adoption';
+}
+
+// ── FILTERS ───────────────────────────────────────────────
+function populateFilters(){
+  const stages=[...new Set(ALL.map(r=>r.stage).filter(Boolean))].sort();
+  const sel=document.getElementById('fst');while(sel.options.length>1)sel.remove(1);
+  stages.forEach(s=>{const o=document.createElement('option');o.value=s;o.text=s;sel.appendChild(o);});
+  const msel=document.getElementById('fm');while(msel.options.length>1)msel.remove(1);
+  MONTHS.forEach((m,i)=>{const o=document.createElement('option');o.value=m;o.text=SHORT[i]+' 2026';msel.appendChild(o);});
+}
+function applyFilters(){
+  const s=document.getElementById('si').value.toLowerCase();
+  const tr=document.getElementById('ftr').value;
+  const st=document.getElementById('fst').value;
+  const hr=document.getElementById('hr').checked;
+  FILT=ALL.filter(r=>{
+    if(s&&!r.businessName.toLowerCase().includes(s)&&!r.dealName.toLowerCase().includes(s))return false;
+    if(tr&&r.trend!==tr)return false;
+    if(st&&r.stage!==st)return false;
+    if(hr&&r.riskScore<50)return false;
+    return true;
+  });
+  render();
+}
+['si','fm','fst','ftr','fty','hr'].forEach(id=>{
+  const el=document.getElementById(id);
+  if(el)el.addEventListener('change',applyFilters);
+  if(el&&el.type==='text')el.addEventListener('input',applyFilters);
+});
+
+// ── RENDER ────────────────────────────────────────────────
+function render(){
+  const d=FILT;
+  // pills
+  document.getElementById('tc').textContent=d.length+' Accounts';
+  const dec=d.filter(r=>r.trend==='declining'||r.trend==='severe').length;
+  const gro=d.filter(r=>r.trend==='growing').length;
+  document.getElementById('dp').textContent='↓ '+dec+' Declining';
+  document.getElementById('gp').textContent='↑ '+gro+' Growing';
+  // KPIs
+  const lm=MONTHS[4],pm=MONTHS[3];
+  let of=0,on=0,pof=0,pon=0;
+  d.forEach(r=>{of+=r.months[lm].offline;on+=r.months[lm].online;pof+=r.months[pm].offline;pon+=r.months[pm].online;});
+  const tot=of+on,ptot=pof+pon;
+  document.getElementById('k0v').textContent=fd(tot,true);
+  document.getElementById('k1v').textContent=fd(of,true);
+  document.getElementById('k2v').textContent=fd(on,true);
+  const drop5=d.filter(r=>r.diff<=-5000).length;
+  const cons=d.filter(r=>r.consecutiveDecline>=2).length;
+  document.getElementById('k3v').textContent=drop5;
+  document.getElementById('k4v').textContent=cons;
+  function setTr(id,cur,prev){
+    const el=document.getElementById(id),dif=cur-prev,pct=prev>0?((dif/prev)*100).toFixed(1):0;
+    el.className='ktrend '+(dif>=0?'up':'dn');el.textContent=(dif>=0?'↑':'↓')+Math.abs(pct)+'%';
+  }
+  setTr('k0t',tot,ptot);setTr('k1t',of,pof);setTr('k2t',on,pon);
+  // charts
+  renderTrend(d);renderDonut(d);renderDecTable(d);renderGrowBar(d);renderAttention(d);renderSplit(d);renderStage(d);renderHeatmap(d);
+}
+
+// ── PLOTLY BASE ───────────────────────────────────────────
+const PL={paper_bgcolor:'rgba(0,0,0,0)',plot_bgcolor:'rgba(0,0,0,0)',font:{family:'Poppins',size:11,color:'#64748b'},margin:{t:20,r:16,b:44,l:70},xaxis:{gridcolor:'#e2e8f0',linecolor:'#e2e8f0',tickfont:{size:10}},yaxis:{gridcolor:'#e2e8f0',linecolor:'#e2e8f0',tickfont:{size:10}},legend:{orientation:'h',y:-0.2,x:.5,xanchor:'center',font:{size:10}},hoverlabel:{bgcolor:'#1e293b',bordercolor:'#1e293b',font:{family:'Poppins',color:'#fff',size:12}}};
+const CF={displayModeBar:false,responsive:true};
+
+// ── TREND CHART ───────────────────────────────────────────
+function renderTrend(d){
+  const co=[],of=[],on=[];
+  MONTHS.forEach(m=>{let of2=0,on2=0;d.forEach(r=>{of2+=r.months[m].offline;on2+=r.months[m].online;});of.push(of2);on.push(on2);co.push(of2+on2);});
+  const mk=(arr)=>arr.map((v,i)=>i===0?null:v-arr[i-1]);
+  const tr=[
+    {x:SHORT,y:co,name:'Combined',mode:'lines+markers',line:{color:'#2563eb',width:3,shape:'spline'},marker:{size:7,color:'#2563eb'},hovertemplate:'<b>%{x}</b><br>Combined: $%{y:,.0f}<br>Change: $%{customdata:+,.0f}<extra></extra>',customdata:mk(co)},
+    {x:SHORT,y:of,name:'Offline',mode:'lines+markers',line:{color:'#0891b2',width:2.5,shape:'spline',dash:'dot'},marker:{size:5,color:'#0891b2'},hovertemplate:'<b>%{x}</b><br>Offline: $%{y:,.0f}<br>Change: $%{customdata:+,.0f}<extra></extra>',customdata:mk(of)},
+    {x:SHORT,y:on,name:'Online',mode:'lines+markers',line:{color:'#059669',width:2.5,shape:'spline',dash:'dash'},marker:{size:5,color:'#059669'},hovertemplate:'<b>%{x}</b><br>Online: $%{y:,.0f}<br>Change: $%{customdata:+,.0f}<extra></extra>',customdata:mk(on)},
+  ];
+  Plotly.react('tc1',tr,{...PL,margin:{t:20,r:16,b:60,l:80},yaxis:{...PL.yaxis,tickprefix:'$',tickformat:'.2s'}},CF);
+}
+
+// ── DONUT HEALTH ──────────────────────────────────────────
+function renderDonut(d){
+  const gro=d.filter(r=>r.trend==='growing').length;
+  const sta=d.filter(r=>r.trend==='stable').length;
+  const dec=d.filter(r=>r.trend==='declining').length;
+  const sev=d.filter(r=>r.trend==='severe').length;
+  Plotly.react('donut1',[{type:'pie',hole:.52,values:[gro,sta,dec,sev],labels:['Growing','Stable','Declining','Severe Drop'],marker:{colors:['#059669','#94a3b8','#f59e0b','#e11d48']},textinfo:'label+percent',textfont:{family:'Poppins',size:10.5},hovertemplate:'<b>%{label}</b><br>%{value} accounts (%{percent})<extra></extra>'}],{...PL,margin:{t:20,r:10,b:50,l:10},showlegend:false,annotations:[{text:'<b>'+d.length+'</b><br>accts',x:.5,y:.5,showarrow:false,font:{size:13,family:'Poppins'}}]},CF);
+}
+
+// ── DECLINING TABLE ───────────────────────────────────────
+let dsc='diff',dsd=-1;
+function renderDecTable(data){
+  let rows=[...data].filter(r=>r.trend==='declining'||r.trend==='severe');
+  rows.sort((a,b)=>dsd*(a[dsc]>b[dsc]?1:-1));
+  rows=rows.slice(0,50);
+  const cols=[
+    {k:'businessName',l:'Business',f:v=>v.length>24?v.slice(0,24)+'…':v},
+    {k:'stage',l:'Stage',f:v=>v||'—'},
+    {k:'currentVol',l:'Current',f:v=>'$'+v.toLocaleString()},
+    {k:'prevVol',l:'Previous',f:v=>'$'+v.toLocaleString()},
+    {k:'diff',l:'Δ',f:v=>`<span style="color:${v<0?'var(--rose)':'var(--green)'};font-weight:700">${v>=0?'+':'-'}$${Math.abs(v).toLocaleString()}</span>`},
+    {k:'trend',l:'Status',f:v=>`<span class="badge ${v}">${v}</span>`},
+    {k:'riskScore',l:'Risk',f:v=>{const c=v>=60?'h':v>=30?'m':'l';return`<span class="rsk r${c}">${v}</span>`;}}
+  ];
+  let h='<table><thead><tr>'+cols.map(c=>`<th onclick="sDecl('${c.k}')">${c.l}<span style="margin-left:3px;opacity:.5">${dsc===c.k?(dsd>0?'▲':'▼'):''}</span></th>`).join('')+'</tr></thead><tbody>';
+  if(!rows.length)h+='<tr><td colspan="7" class="nodata">No declining accounts.</td></tr>';
+  rows.forEach(r=>{const cl=r.trend==='severe'?'sv':'md';h+=`<tr class="${cl}">`+cols.map(c=>`<td>${c.f(r[c.k])}</td>`).join('')+'</tr>';});
+  document.getElementById('dTable').innerHTML=h+'</tbody></table>';
+}
+function sDecl(col){dsd=dsc===col?-dsd:-1;dsc=col;renderDecTable(FILT);}
+
+// ── GROWTH BAR ────────────────────────────────────────────
+function renderGrowBar(d){
+  let gr=[...d].filter(r=>r.trend==='growing').sort((a,b)=>b.diff-a.diff).slice(0,10);
+  if(!gr.length){document.getElementById('gBar').innerHTML='<div class="nodata">No growing accounts.</div>';return;}
+  const y=gr.map(r=>r.businessName.length>26?r.businessName.slice(0,26)+'…':r.businessName);
+  const x=gr.map(r=>r.diff);
+  const n=x.length;
+  Plotly.react('gBar',[{type:'bar',orientation:'h',x,y,marker:{color:x.map((_,i)=>`hsl(${208+i*12},75%,${48+i}%)`),line:{color:'transparent'}},hovertemplate:'<b>%{y}</b><br>Growth: +$%{x:,.0f}<extra></extra>'}],
+    {...PL,margin:{t:16,r:50,b:44,l:Math.min(180,26*7)},xaxis:{...PL.xaxis,tickprefix:'$',tickformat:'.2s'},yaxis:{...PL.yaxis,automargin:true,tickfont:{size:10}},showlegend:false},CF);
+}
+
+// ── ATTENTION TABLE ───────────────────────────────────────
+function renderAttention(d){
+  const rows=d.filter(r=>r.diff<=-5000||r.consecutiveDecline>=2||(r.currentVol===0&&r.prevVol>0)).sort((a,b)=>b.riskScore-a.riskScore).slice(0,60);
+  let h='<table><thead><tr><th>Business</th><th>Deal</th><th>Stage</th>'+SHORT.map(m=>'<th>'+m+'</th>').join('')+'<th>Total &Delta;</th><th>Action</th></tr></thead><tbody>';
+  if(!rows.length)h+='<tr><td colspan="10" class="nodata">No accounts requiring immediate attention.</td></tr>';
+  rows.forEach(r=>{
+    const cl=r.riskScore>=60?'sv':r.riskScore>=30?'md':'';
+    const td=r.volumes[MONTHS[4]]-r.volumes[MONTHS[0]];
+    h+=`<tr class="${cl}"><td style="font-weight:600">${r.businessName}</td><td style="max-width:160px;overflow:hidden;text-overflow:ellipsis;color:var(--muted)">${r.dealName}</td><td>${r.stage}</td>`;
+    MONTHS.forEach(m=>{const v=r.volumes[m];h+=`<td>${v>0?'$'+v.toLocaleString():'—'}</td>`;});
+    h+=`<td style="font-weight:700;color:${td<0?'var(--rose)':'var(--green)'}">${td>=0?'+':'-'}$${Math.abs(td).toLocaleString()}</td>`;
+    h+=`<td><span class="achip">${suggestAction(r)}</span></td></tr>`;
+  });
+  document.getElementById('aTable').innerHTML=h+'</tbody></table>';
+}
+
+// ── SPLIT DONUT ───────────────────────────────────────────
+function renderSplit(d){
+  const lm=MONTHS[4];let of=0,on=0;
+  d.forEach(r=>{of+=r.months[lm].offline;on+=r.months[lm].online;});
+  Plotly.react('split1',[{type:'pie',hole:.48,values:[of,on],labels:['Offline','Online'],marker:{colors:['#0891b2','#059669']},textinfo:'label+percent',textfont:{family:'Poppins',size:11},hovertemplate:'<b>%{label}</b><br>$%{value:,.0f}<extra></extra>'}],
+    {...PL,margin:{t:20,r:10,b:50,l:10},showlegend:false},CF);
+}
+
+// ── STAGE CHART ───────────────────────────────────────────
+function renderStage(d){
+  const lm=MONTHS[4],map={};
+  d.forEach(r=>{const s=r.stage||'Unknown';map[s]=(map[s]||0)+r.volumes[lm];});
+  const labels=Object.keys(map).sort((a,b)=>map[b]-map[a]);
+  const vals=labels.map(l=>map[l]);
+  const colors=['#2563eb','#0891b2','#059669','#d97706','#7c3aed','#e11d48','#64748b','#0ea5e9','#10b981','#f97316'];
+  Plotly.react('stage1',[{type:'bar',x:labels,y:vals,marker:{color:labels.map((_,i)=>colors[i%colors.length])},hovertemplate:'<b>%{x}</b><br>$%{y:,.0f}<extra></extra>'}],
+    {...PL,margin:{t:20,r:10,b:80,l:70},xaxis:{...PL.xaxis,tickangle:-30,tickfont:{size:9}},yaxis:{...PL.yaxis,tickprefix:'$',tickformat:'.2s'},showlegend:false},CF);
+}
+
+// ── HEATMAP ───────────────────────────────────────────────
+function renderHeatmap(d){
+  const stages=[...new Set(d.map(r=>r.stage||'Unknown'))].filter(Boolean);
+  stages.sort((a,b)=>{
+    const sa=d.filter(r=>(r.stage||'Unknown')===a).reduce((s,r)=>s+r.volumes[MONTHS[4]],0);
+    const sb=d.filter(r=>(r.stage||'Unknown')===b).reduce((s,r)=>s+r.volumes[MONTHS[4]],0);
+    return sb-sa;
+  });
+  const showStages=stages.slice(0,10);
+  const zVals=[],zText=[];
+  showStages.forEach(s=>{
+    const rw=[],tx=[];
+    for(let i=1;i<MONTHS.length;i++){
+      const m=MONTHS[i],pm=MONTHS[i-1];
+      let cur=0,prv=0;
+      d.filter(r=>(r.stage||'Unknown')===s).forEach(r=>{cur+=r.volumes[m];prv+=r.volumes[pm];});
+      const df=cur-prv;rw.push(df);tx.push((df>=0?'+':'-')+(Math.abs(df)>=1000?(Math.abs(df)/1000).toFixed(0)+'K':Math.abs(df).toString()));
+    }
+    zVals.push(rw);zText.push(tx);
+  });
+  const xLbls=SHORT.slice(1).map((m,i)=>SHORT[i]+' → '+m);
+  Plotly.react('hmap1',[{type:'heatmap',z:zVals,x:xLbls,y:showStages,colorscale:[[0,'#fca5a5'],[.45,'#fee2e2'],[.5,'#f8fafc'],[.55,'#bbf7d0'],[1,'#059669']],zmid:0,text:zText,texttemplate:'%{text}',textfont:{size:9,family:'Poppins'},hovertemplate:'<b>%{y}</b><br>%{x}<br>$%{z:+,.0f}<extra></extra>',showscale:false}],
+    {...PL,margin:{t:20,r:10,b:50,l:110},xaxis:{...PL.xaxis,tickfont:{size:9}},yaxis:{...PL.yaxis,tickfont:{size:10},automargin:true}},CF);
+}
+
+// ── EXPORT ────────────────────────────────────────────────
+function exportCSV(){
+  const hdr=['Business Name','Deal Name','Stage'];
+  MONTHS.forEach(m=>{hdr.push(m+' Offline',m+' Online',m+' Combined');});
+  hdr.push('Current Trend','Risk Score','Consecutive Decline','Suggested Action');
+  const rows=[hdr];
+  FILT.forEach(r=>{
+    const row=[r.businessName,r.dealName,r.stage];
+    MONTHS.forEach(m=>{row.push(r.months[m].offline,r.months[m].online,r.volumes[m]);});
+    row.push(r.trend,r.riskScore,r.consecutiveDecline,suggestAction(r));
+    rows.push(row);
+  });
+  const csv=rows.map(r=>r.map(v=>'"'+String(v).replace(/"/g,'\"')+'"').join(',')).join('\n');
+  const a=document.createElement('a');a.href='data:text/csv;charset=utf-8,'+encodeURIComponent(csv);a.download='adit_pay_export.csv';a.click();
+}
+
+// ── RESET ─────────────────────────────────────────────────
+function resetUpload(){
+  ALL=[];FILT=[];
+  document.getElementById('dash').style.display='none';
+  document.getElementById('uploadScreen').style.display='flex';
+  document.getElementById('fi').value='';
+  ['fm','fst','ftr','fty'].forEach(id=>{document.getElementById(id).selectedIndex=0;});
+  document.getElementById('si').value='';
+  document.getElementById('hr').checked=false;
+  const fst=document.getElementById('fst');while(fst.options.length>1)fst.remove(1);
+  const fm=document.getElementById('fm');while(fm.options.length>1)fm.remove(1);
+}
+function show(){
+  document.getElementById('uploadScreen').style.display='none';
+  document.getElementById('dash').style.display='block';
+}
+</script>
+</body>
+</html>
