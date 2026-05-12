@@ -130,7 +130,7 @@ tr:hover td{opacity:.9}
 
 <!-- HEADER -->
 <div class="hdr">
-  <div class="eyebrow">Adit Pay &middot; Revenue Intelligence</div>
+  <div class="eyebrow">Customer Success &middot; Revenue Intelligence</div>
   <h1>Adit Pay <span class="hl">Volume</span> Dashboard</h1>
   <p>Track month-over-month payment trends, identify declining accounts, and improve Adit Pay adoption.</p>
 </div>
@@ -155,7 +155,7 @@ tr:hover td{opacity:.9}
     <span class="pill"><span class="ldot"></span><span id="tc">0 Accounts</span></span>
     <span class="pill red" id="dp">&#8595; 0 Declining</span>
     <span class="pill grn" id="gp">&#8593; 0 Growing</span>
-    <div class="sb"><span class="sb-icon">&#128269;</span><input id="si" type="text" placeholder="Search business or deal&hellip;"/></div>
+    <div class="sb"><span class="sb-icon">&#128269;</span><input id="si" type="text" placeholder="Search deal name&hellip;"/></div>
     <select id="fm"><option value="">All Months</option></select>
     <select id="fst"><option value="">All Stages</option></select>
     <select id="ftr"><option value="">All Trends</option><option value="growing">Growing</option><option value="stable">Stable</option><option value="declining">Declining</option><option value="severe">Severe Drop</option></select>
@@ -453,12 +453,19 @@ function renderGrowBar(d){
 // ── ATTENTION TABLE ───────────────────────────────────────
 function renderAttention(d){
   const rows=d.filter(r=>r.diff<=-5000||r.consecutiveDecline>=2||(r.currentVol===0&&r.prevVol>0)).sort((a,b)=>b.riskScore-a.riskScore).slice(0,60);
-  let h='<table><thead><tr><th>Business</th><th>Deal</th><th>Stage</th>'+SHORT.map(m=>'<th>'+m+'</th>').join('')+'<th>Total &Delta;</th><th>Action</th></tr></thead><tbody>';
+  let h='<table><thead><tr><th>Deal Name</th><th>Business</th><th>Stage</th>'+SHORT.map(m=>'<th>'+m+'</th>').join('')+'<th>Total &Delta;</th><th>Action</th></tr></thead><tbody>';
   if(!rows.length)h+='<tr><td colspan="10" class="nodata">No accounts requiring immediate attention.</td></tr>';
   rows.forEach(r=>{
     const cl=r.riskScore>=60?'sv':r.riskScore>=30?'md':'';
-    const td=r.volumes[MONTHS[4]]-r.volumes[MONTHS[0]];
-    h+=`<tr class="${cl}"><td style="font-weight:600">${r.businessName}</td><td style="max-width:160px;overflow:hidden;text-overflow:ellipsis;color:var(--muted)">${r.dealName}</td><td>${r.stage}</td>`;
+    // Total Value: April vs highest of Jan/Feb/Mar
+    const aprVol = r.volumes[MONTHS[3]] || 0;
+    const prevHighest = Math.max(
+      r.volumes[MONTHS[0]] || 0,
+      r.volumes[MONTHS[1]] || 0,
+      r.volumes[MONTHS[2]] || 0
+    );
+    const td = aprVol - prevHighest;
+    h+=`<tr class="${cl}"><td style="font-weight:600;max-width:200px;overflow:hidden;text-overflow:ellipsis">${r.dealName}</td><td style="max-width:130px;overflow:hidden;text-overflow:ellipsis;color:var(--muted)">${r.businessName}</td><td>${r.stage}</td>`;
     MONTHS.forEach(m=>{const v=r.volumes[m];h+=`<td>${v>0?'$'+v.toLocaleString():'—'}</td>`;});
     h+=`<td style="font-weight:700;color:${td<0?'var(--rose)':'var(--green)'}">${td>=0?'+':'-'}$${Math.abs(td).toLocaleString()}</td>`;
     h+=`<td><span class="achip">${suggestAction(r)}</span></td></tr>`;
@@ -512,12 +519,12 @@ function renderHeatmap(d){
 
 // ── EXPORT ────────────────────────────────────────────────
 function exportCSV(){
-  const hdr=['Business Name','Deal Name','Stage'];
+  const hdr=['Deal Name','Business Name','Stage'];
   MONTHS.forEach(m=>{hdr.push(m+' Offline',m+' Online',m+' Combined');});
   hdr.push('Current Trend','Risk Score','Consecutive Decline','Suggested Action');
   const rows=[hdr];
   FILT.forEach(r=>{
-    const row=[r.businessName,r.dealName,r.stage];
+    const row=[r.dealName,r.businessName,r.stage];
     MONTHS.forEach(m=>{row.push(r.months[m].offline,r.months[m].online,r.volumes[m]);});
     row.push(r.trend,r.riskScore,r.consecutiveDecline,suggestAction(r));
     rows.push(row);
