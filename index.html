@@ -454,7 +454,7 @@ function renderGrowBar(d){
 function renderAttention(d){
   const rows=d.filter(r=>r.diff<=-5000||r.consecutiveDecline>=2||(r.currentVol===0&&r.prevVol>0)).sort((a,b)=>b.riskScore-a.riskScore).slice(0,60);
   let h='<table><thead><tr><th>Deal Name</th><th>Business</th><th>Stage</th>'+SHORT.map(m=>'<th>'+m+'</th>').join('')+'<th>Total &Delta;</th><th>Action</th></tr></thead><tbody>';
-  if(!rows.length)h+='<tr><td colspan="10" class="nodata">No accounts requiring immediate attention.</td></tr>';
+  if(!rows.length)h+='<tr><td colspan="10" class="nodata">No deals requiring immediate attention.</td></tr>';
   rows.forEach(r=>{
     const cl=r.riskScore>=60?'sv':r.riskScore>=30?'md':'';
     // Total Value: April vs highest of Jan/Feb/Mar
