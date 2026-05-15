@@ -130,7 +130,7 @@ tr:hover td{opacity:.9}
 
 <!-- HEADER -->
 <div class="hdr">
-  <div class="eyebrow">Customer Success &middot; Revenue Intelligence</div>
+  <div class="eyebrow">Adit Pay &middot; Revenue Intelligence</div>
   <h1>Adit Pay <span class="hl">Volume</span> Dashboard</h1>
   <p>Track month-over-month payment trends, identify declining accounts, and improve Adit Pay adoption.</p>
 </div>
@@ -198,13 +198,13 @@ tr:hover td{opacity:.9}
 
     <div class="slbl">Account Performance</div>
     <div class="row r2">
-      <div class="card"><div class="ctitle"><span class="dot" style="background:var(--rose)"></span>Top Declining Accounts</div><div class="tw" id="dTable"></div></div>
-      <div class="card"><div class="ctitle"><span class="dot" style="background:var(--green)"></span>Top 10 Deals by April Volume</div><div class="cw" id="gBar"></div></div>
+      <div class="card"><div class="ctitle"><span class="dot" style="background:var(--rose)"></span>Top Declining Deals</div><div class="tw" id="dTable"></div></div>
+      <div class="card"><div class="ctitle"><span class="dot" style="background:var(--green)"></span>Top 10 Growing Deals</div><div class="cw" id="gBar"></div></div>
     </div>
 
     <div class="slbl">Priority Attention Required</div>
     <div class="row r1">
-      <div class="card atcard"><div class="ctitle"><span class="dot" style="background:var(--rose)"></span>&#128680; Accounts Requiring Immediate Attention</div><div class="tw" id="aTable"></div></div>
+      <div class="card atcard"><div class="ctitle"><span class="dot" style="background:var(--rose)"></span>&#128680; Deals Requiring Immediate Attention</div><div class="tw" id="aTable"></div></div>
     </div>
 
     <div class="slbl">Breakdown &amp; Heatmap</div>
@@ -441,36 +441,20 @@ function sDecl(col){dsd=dsc===col?-dsd:-1;dsc=col;renderDecTable(FILT);}
 
 // ── GROWTH BAR ────────────────────────────────────────────
 function renderGrowBar(d){
-  // Top 10 deals ranked by April (previous month) volume — descending
-  // Current month (May) is completely ignored
-  const safe=v=>{const n=parseFloat(v);return isFinite(n)?n:0;};
-  // MONTHS[3] = Apr 2026 (previous month). Sort by April volume descending.
-  const ranked=[...d]
-    .map(r=>({...r,aprVol:safe(r.volumes[MONTHS[3]])}))
-    .filter(r=>r.aprVol>0)                          // must have April activity
-    .sort((a,b)=>b.aprVol-a.aprVol)                 // highest April volume first
-    .slice(0,10);
-  if(!ranked.length){document.getElementById('gBar').innerHTML='<div class="nodata">No April volume data found.</div>';return;}
-  // Reverse for horizontal bar (Plotly renders bottom-to-top, reverse gives top-to-bottom)
-  const display=[...ranked].reverse();
-  const y=display.map(r=>r.dealName.length>32?r.dealName.slice(0,30)+'…':r.dealName);
-  const x=display.map(r=>r.aprVol);
-  const fullNames=display.map(r=>r.dealName);
-  Plotly.react('gBar',[{type:'bar',orientation:'h',x,y,
-    customdata:fullNames,
-    marker:{color:x.map((_,i)=>`hsl(${208+i*12},75%,${48+i}%)`),line:{color:'transparent'}},
-    hovertemplate:'<b>%{customdata}</b><br>April Volume: $%{x:,.0f}<extra></extra>'}],
-    {...PL,margin:{t:16,r:50,b:44,l:210},
-     xaxis:{...PL.xaxis,tickprefix:'$',tickformat:'.2s'},
-     yaxis:{...PL.yaxis,automargin:true,tickfont:{size:10}},
-     showlegend:false},CF);
+  let gr=[...d].filter(r=>r.trend==='growing').sort((a,b)=>b.diff-a.diff).slice(0,10);
+  if(!gr.length){document.getElementById('gBar').innerHTML='<div class="nodata">No growing accounts.</div>';return;}
+  const y=gr.map(r=>r.businessName.length>26?r.businessName.slice(0,26)+'…':r.businessName);
+  const x=gr.map(r=>r.diff);
+  const n=x.length;
+  Plotly.react('gBar',[{type:'bar',orientation:'h',x,y,marker:{color:x.map((_,i)=>`hsl(${208+i*12},75%,${48+i}%)`),line:{color:'transparent'}},hovertemplate:'<b>%{y}</b><br>Growth: +$%{x:,.0f}<extra></extra>'}],
+    {...PL,margin:{t:16,r:50,b:44,l:Math.min(180,26*7)},xaxis:{...PL.xaxis,tickprefix:'$',tickformat:'.2s'},yaxis:{...PL.yaxis,automargin:true,tickfont:{size:10}},showlegend:false},CF);
 }
 
 // ── ATTENTION TABLE ───────────────────────────────────────
 function renderAttention(d){
   const rows=d.filter(r=>r.diff<=-5000||r.consecutiveDecline>=2||(r.currentVol===0&&r.prevVol>0)).sort((a,b)=>b.riskScore-a.riskScore).slice(0,60);
   let h='<table><thead><tr><th>Deal Name</th><th>Business</th><th>Stage</th>'+SHORT.map(m=>'<th>'+m+'</th>').join('')+'<th>Total &Delta; (Apr vs Best Prior)</th><th>Action</th></tr></thead><tbody>';
-  if(!rows.length)h+='<tr><td colspan="10" class="nodata">No accounts requiring immediate attention.</td></tr>';
+  if(!rows.length)h+='<tr><td colspan="10" class="nodata">No deals requiring immediate attention.</td></tr>';
   rows.forEach(r=>{
     const cl=r.riskScore>=60?'sv':r.riskScore>=30?'md':'';
     // Total Value: April vs highest of Jan/Feb/Mar
@@ -562,10 +546,26 @@ function resetUpload(){
   const fst=document.getElementById('fst');while(fst.options.length>1)fst.remove(1);
   const fm=document.getElementById('fm');while(fm.options.length>1)fm.remove(1);
 }
+
 function show(){
   document.getElementById('uploadScreen').style.display='none';
   document.getElementById('dash').style.display='block';
 }
 </script>
+
+<!-- Footer Credit -->
+<div style="
+    width: 100%;
+    text-align: center;
+    padding: 12px 0;
+    font-size: 14px;
+    color: #6b7280;
+    background: transparent;
+    margin-top: 20px;
+    font-family: Arial, sans-serif;
+">
+    Designed & Developed by <strong style="color:#4f46e5;">Imran</strong>
+</div>
+
 </body>
 </html>
